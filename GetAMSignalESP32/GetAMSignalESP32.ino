@@ -1,4 +1,5 @@
 // Usa GPIO25 (DAC1) para salida analógica
+#define LED 2
 const int dacPin = 25;
 
 String inputString = "";
@@ -6,10 +7,13 @@ bool receiving = false;
 
 void setup() {
   Serial.begin(9600);  // Debe coincidir con el baud rate en Python
+  pinMode(LED, OUTPUT);
 }
 
 void loop() {
+  digitalWrite(LED, LOW);
   while (Serial.available()) {
+    digitalWrite(LED, HIGH);
     char c = Serial.read();
     
     if (c == '\n') {

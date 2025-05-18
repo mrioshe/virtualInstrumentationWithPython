@@ -4,13 +4,13 @@ import serial
 import time
 
 # Parámetros de la señal
-fs = 2000       # Frecuencia de muestreo (Hz)
+fs = 8000       # Frecuencia de muestreo (Hz)
 duracion = 4    # Duración en segundos
-fc = 100         # Frecuencia de la portadora (Hz)
-fm = 20        # Frecuencia de la envolvente (Hz)
-Am = 0.5        # Amplitud de la envolvente
-Ac = 1          # Amplitud de la portadora
-offset = 2      # Offset para mantener la señal en positivo
+fc = 200         # Frecuencia de la portadora (Hz)
+fm = 10        # Frecuencia de la envolvente (Hz)
+Am = 0.25        # Amplitud de la envolvente
+Ac = 0.5          # Amplitud de la portadora
+offset = 2.5      # Offset para mantener la señal en positivo
 
 # Vector de tiempo
 t = np.linspace(0, duracion, int(fs * duracion))
