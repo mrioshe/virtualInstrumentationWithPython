@@ -1,63 +1,75 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import serial
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import numpy as np
+import collections
 import time
 
-# Parámetros
-fs = 1000  # Frecuencia de muestreo, debe coincidir con el Arduino
-duracion = 2  # Duración esperada en segundos
-n_muestras = fs * duracion
+print("Midiendo frecuencia de muestreo...")
+cuenta = 0
+inicio = time.time()
+while time.time() - inicio < 1:
+    if ser.in_waiting:
+        ser.readline()
+        cuenta += 1
 
-# Configura el puerto serial (ajusta el nombre del puerto)
-puerto = serial.Serial('COM5', 115200)
-time.sleep(2)  # Espera para asegurar conexión
+fs = cuenta
+print(f"Frecuencia de muestreo estimada: {fs} Hz")
 
-datos_recibidos = []
+# CONFIGURA ESTO:
+puerto_serial = 'COM5'  # Cambia al puerto correcto
+baudrate = 115200
 
-print("Recibiendo datos...")
+# Conectar al puerto serial
+ser = serial.Serial(puerto_serial, baudrate)
+print(f"Conectado a {puerto_serial}")
 
-while len(datos_recibidos) < n_muestras:
-    if puerto.in_waiting > 0:
-        linea = puerto.readline().decode('utf-8').strip()
-        try:
-            valor = int(linea)
-            datos_recibidos.append(valor)
-        except ValueError:
-            continue  # Ignora líneas inválidas
+# Buffer circular para la señal (potencia de 2 para FFT eficiente)
+N = 256
+buffer = collections.deque([0]*N, maxlen=N)
 
-puerto.close()
-print("Recepción completa.")
+# Configurar figura con dos subgráficas
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
 
-# Convertir a arreglo numpy
-senal_adc = np.array(datos_recibidos)
+# Señal en el tiempo
+linea_senal, = ax1.plot(range(N), [0]*N)
+ax1.set_title("Señal analógica en tiempo real")
+ax1.set_ylim(0, 1100)
+ax1.set_ylabel("Valor ADC")
+ax1.set_xlabel("Muestras")
+ax1.grid(True)
 
-# Vector de tiempo
-t = np.linspace(0, duracion, len(senal_adc))
+# FFT en tiempo real
+frecuencias = np.fft.fftfreq(N, 1/fs)
+linea_fft, = ax2.plot(frecuencias[:N//2], [0]*(N//2))
+ax2.set_title("FFT (frecuencia en tiempo real)")
+ax2.set_ylim(0, 10000)
+ax2.set_xlim(0, fs/2)
+ax2.set_ylabel("Magnitud")
+ax2.set_xlabel("Frecuencia (Hz)")
+ax2.grid(True)
 
-# Normaliza la señal (0–5V si es una entrada de 10 bits)
-senal_voltaje = (senal_adc / 1023) * 5
+def actualizar(frame):
+    try:
+        if ser.in_waiting:
+            dato = ser.readline().decode().strip()
+            valor = int(dato)
+            buffer.append(valor)
 
-# FFT
-fft_senal = np.fft.fft(senal_voltaje)
-frecuencias = np.fft.fftfreq(len(t), 1/fs)
-n = len(t) // 2  # Solo mitad positiva
+            # Actualizar señal
+            linea_senal.set_ydata(buffer)
 
-# --- Gráficas ---
-plt.figure(figsize=(12, 6))
+            # Calcular FFT y actualizar gráfica
+            senal_np = np.array(buffer)
+            fft = np.abs(np.fft.fft(senal_np - np.mean(senal_np)))  # Remover DC
+            linea_fft.set_ydata(fft[:N//2])
+    except:
+        pass
 
-plt.subplot(2, 1, 1)
-plt.plot(t, senal_voltaje, color='blue')
-plt.title('Señal recibida desde Arduino')
-plt.xlabel('Tiempo (s)')
-plt.ylabel('Voltaje (V)')
-plt.grid(True)
+    return linea_senal, linea_fft
 
-plt.subplot(2, 1, 2)
-plt.plot(frecuencias[:n], np.abs(fft_senal[:n]), color='purple')
-plt.title('FFT de la señal recibida')
-plt.xlabel('Frecuencia (Hz)')
-plt.ylabel('Magnitud')
-plt.grid(True)
-
+ani = FuncAnimation(fig, actualizar, interval=10)
 plt.tight_layout()
 plt.show()
+
+ser.close()
