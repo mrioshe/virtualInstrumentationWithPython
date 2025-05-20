@@ -5,6 +5,5 @@ void setup() {
 void loop() {
   int valor = analogRead(A0);     // Leer el valor analógico en A0 (0–1023)
   Serial.println(valor);          // Enviar el valor por el puerto serial
-
-  delay(0.1);                      // Pequeña pausa para estabilizar la lectura (ajustable)
+  delay(1);                      // Pequeña pausa para estabilizar la lectura (ajustable)
 }

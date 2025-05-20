@@ -3,22 +3,11 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 import collections
-import time
-
-print("Midiendo frecuencia de muestreo...")
-cuenta = 0
-inicio = time.time()
-while time.time() - inicio < 1:
-    if ser.in_waiting:
-        ser.readline()
-        cuenta += 1
-
-fs = cuenta
-print(f"Frecuencia de muestreo estimada: {fs} Hz")
 
 # CONFIGURA ESTO:
 puerto_serial = 'COM5'  # Cambia al puerto correcto
 baudrate = 115200
+fs = 1000  # Frecuencia de muestreo (aproximada, según delay en Arduino)
 
 # Conectar al puerto serial
 ser = serial.Serial(puerto_serial, baudrate)
