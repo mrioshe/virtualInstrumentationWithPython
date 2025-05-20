@@ -4,13 +4,13 @@ import serial
 import time
 
 # Parámetros de la señal
-fs = 8000       # Frecuencia de muestreo (Hz)
-duracion = 4    # Duración en segundos
-fc = 200         # Frecuencia de la portadora (Hz)
-fm = 10        # Frecuencia de la envolvente (Hz)
-Am = 0.25        # Amplitud de la envolvente
-Ac = 0.5          # Amplitud de la portadora
-offset = 2.5      # Offset para mantener la señal en positivo
+fs = 1000       # Frecuencia de muestreo (Hz)
+duracion = 30    # Duración en segundos
+fc = 60        # Frecuencia de la portadora (Hz)
+fm = 8        # Frecuencia de la envolvente (Hz)
+Am = 0.15        # Amplitud de la envolvente
+Ac = 0.3          # Amplitud de la portadora
+offset = 2.5     # Offset para mantener la señal en positivo
 
 # Vector de tiempo
 t = np.linspace(0, duracion, int(fs * duracion))
@@ -25,7 +25,7 @@ senal_am = Ac * (1 + m * np.sin(2 * np.pi * fm * t)) * np.sin(2 * np.pi * fc * t
 senal_am_offset = senal_am + offset
 
 # Envío por puerto serial (ajusta COM7)
-puerto = serial.Serial('COM7', 9600)
+puerto = serial.Serial('COM9', 9600)
 time.sleep(2)
 
 # Enviar los valores de la señal AM con offset

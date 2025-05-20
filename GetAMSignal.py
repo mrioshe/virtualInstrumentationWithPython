@@ -5,7 +5,7 @@ import numpy as np
 import collections
 
 # CONFIGURA ESTO:
-puerto_serial = 'COM5'  # Cambia al puerto correcto
+puerto_serial = 'COM6'  # Cambia al puerto correcto
 baudrate = 115200
 fs = 750 # Frecuencia de muestreo (aproximada, según delay en Arduino)
 
@@ -24,6 +24,7 @@ fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
 linea_senal, = ax1.plot(range(N), [0]*N)
 ax1.set_title("Señal en voltaje (tiempo real)")
 ax1.set_ylim(0, 5.5)  # Ajustado a voltaje (0 a 5V)
+ax1.set_xlim(0, 2000)
 ax1.set_ylabel("Voltaje (V)")
 ax1.set_xlabel("Muestras")
 ax1.grid(True)
