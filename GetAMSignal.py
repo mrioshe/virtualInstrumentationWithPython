@@ -7,7 +7,7 @@ import collections
 # CONFIGURA ESTO:
 puerto_serial = 'COM5'  # Cambia al puerto correcto
 baudrate = 115200
-fs = 1000  # Frecuencia de muestreo (aproximada, según delay en Arduino)
+fs = 750 # Frecuencia de muestreo (aproximada, según delay en Arduino)
 
 # Conectar al puerto serial
 ser = serial.Serial(puerto_serial, baudrate)
@@ -22,9 +22,9 @@ fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
 
 # Señal en el tiempo
 linea_senal, = ax1.plot(range(N), [0]*N)
-ax1.set_title("Señal analógica en tiempo real")
-ax1.set_ylim(0, 1100)
-ax1.set_ylabel("Valor ADC")
+ax1.set_title("Señal en voltaje (tiempo real)")
+ax1.set_ylim(0, 5.5)  # Ajustado a voltaje (0 a 5V)
+ax1.set_ylabel("Voltaje (V)")
 ax1.set_xlabel("Muestras")
 ax1.grid(True)
 
@@ -32,8 +32,8 @@ ax1.grid(True)
 frecuencias = np.fft.fftfreq(N, 1/fs)
 linea_fft, = ax2.plot(frecuencias[:N//2], [0]*(N//2))
 ax2.set_title("FFT (frecuencia en tiempo real)")
-ax2.set_ylim(0, 10000)
-ax2.set_xlim(0, fs/2)
+ax2.set_ylim(0, 200)          # Magnitud de 0 a 10
+ax2.set_xlim(0, 200)         # Frecuencia de 0 a 200 Hz
 ax2.set_ylabel("Magnitud")
 ax2.set_xlabel("Frecuencia (Hz)")
 ax2.grid(True)
@@ -43,14 +43,15 @@ def actualizar(frame):
         if ser.in_waiting:
             dato = ser.readline().decode().strip()
             valor = int(dato)
-            buffer.append(valor)
+            voltaje = (valor / 1023.0) * 5.0  # Conversión ADC -> Voltaje
+            buffer.append(voltaje)
 
-            # Actualizar señal
+            # Actualizar señal en voltaje
             linea_senal.set_ydata(buffer)
 
             # Calcular FFT y actualizar gráfica
             senal_np = np.array(buffer)
-            fft = np.abs(np.fft.fft(senal_np - np.mean(senal_np)))  # Remover DC
+            fft = np.abs(np.fft.fft(senal_np - np.mean(senal_np)))
             linea_fft.set_ydata(fft[:N//2])
     except:
         pass
