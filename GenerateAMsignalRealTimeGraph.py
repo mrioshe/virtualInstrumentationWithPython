@@ -1,61 +1,73 @@
+import serial
 import numpy as np
 import matplotlib.pyplot as plt
-import serial
 import time
 
-# Parámetros de la señal
-fs = 1000  # Frecuencia de muestreo
-fc = 60    # Portadora
-fm = 8     # Envolvente
-Am = 0.15
-Ac = 0.3
-offset = 2.5
+# Configuración del puerto serial
+puerto = serial.Serial('COM5', 115200)  # Ajusta el COM según tu sistema
+time.sleep(2)  # Espera para establecer conexión
 
-# Abrir puerto serial
-puerto = serial.Serial('COM9', 9600)  # Cambia el puerto según tu sistema
-time.sleep(2)
+# Parámetros
+ventana = 256  # Número de muestras por ventana (para el gráfico y la FFT)
+fs_muestras = []  # Lista para calcular frecuencia de muestreo real
 
-# Inicializar gráfico interactivo
+# Preparar la gráfica
 plt.ion()
-fig, ax = plt.subplots()
-xdata, ydata = [], []
-line, = ax.plot([], [], lw=2)
-ax.set_xlim(0, 1)
-ax.set_ylim(offset - 0.5, offset + 0.5)
-ax.set_title("Señal AM Enviada en Tiempo Real")
-ax.set_xlabel("Tiempo (s)")
-ax.set_ylabel("Amplitud")
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+linea1, = ax1.plot([], [], color='blue')
+linea2, = ax2.plot([], [], color='red')
+ax1.set_title('Señal en tiempo real')
+ax2.set_title('FFT en tiempo real')
+ax1.set_ylim(0, 1024)
+ax1.set_xlim(0, ventana)
+ax2.set_xlim(0, 500)  # Frecuencia hasta 500 Hz
+ax2.set_ylim(0, 1000)
 
-# Envío y gráfica en tiempo real
-t0 = time.time()
+# Variable de control
+running = True
 
+def on_close(event):
+    global running
+    running = False
+
+fig.canvas.mpl_connect('close_event', on_close)
+
+# Bucle de lectura
+datos = []
 try:
-    while True:
-        t = time.time() - t0
+    while running:
+        if puerto.in_waiting:
+            inicio = time.time()
+            valor = puerto.readline().decode().strip()
+            try:
+                dato = int(valor)
+                datos.append(dato)
+                if len(datos) >= ventana:
+                    # Tiempo entre muestras
+                    duracion = time.time() - inicio
+                    fs_muestras.append(1/duracion)
 
-        # Señal en tiempo t
-        envolvente = Am * np.sin(2 * np.pi * fm * t)
-        valor = Ac * (1 + envolvente / Ac) * np.sin(2 * np.pi * fc * t) + offset
+                    # Actualizar señal
+                    x = np.arange(ventana)
+                    y = datos[-ventana:]
+                    linea1.set_data(x, y)
 
-        # Enviar por serial
-        mensaje = f"{valor:.4f}\n"
-        puerto.write(mensaje.encode())
+                    # FFT
+                    fft = np.abs(np.fft.fft(y))
+                    freqs = np.fft.fftfreq(ventana, d=1/np.mean(fs_muestras[-10:]))
+                    linea2.set_data(freqs[:ventana//2], fft[:ventana//2])
 
-        # Agregar a la gráfica
-        xdata.append(t)
-        ydata.append(valor)
-
-        if len(xdata) > fs:
-            xdata = xdata[-fs:]
-            ydata = ydata[-fs:]
-
-        line.set_data(xdata, ydata)
-        ax.set_xlim(max(0, t - 1), t)
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-
-        time.sleep(1 / fs)
+                    # Redibujar
+                    ax1.set_ylim(min(y)-10, max(y)+10)
+                    ax2.set_ylim(0, max(fft[:ventana//2])+10)
+                    fig.canvas.draw()
+                    fig.canvas.flush_events()
+            except ValueError:
+                pass
 
 except KeyboardInterrupt:
+    print("Interrupción manual.")
+
+finally:
     puerto.close()
-    print("Transmisión detenida.")
+    print("Puerto serial cerrado.")
