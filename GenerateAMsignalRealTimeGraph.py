@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import time
 
 # Configuración del puerto serial
-puerto = serial.Serial('COM5', 115200)  # Ajusta el COM según tu sistema
+puerto = serial.Serial('COM9', 115200)  # Ajusta el COM según tu sistema
 time.sleep(2)  # Espera para establecer conexión
 
 # Parámetros

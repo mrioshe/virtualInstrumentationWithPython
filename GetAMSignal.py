@@ -1,30 +1,23 @@
-import serial
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import numpy as np
-import collections
+from collections import deque
+import serial
 
-# CONFIGURA ESTO:
-puerto_serial = 'COM6'  # Cambia al puerto correcto
-baudrate = 115200
-fs = 750 # Frecuencia de muestreo (aproximada, según delay en Arduino)
+# Parámetros
+N = 2000              # Número de muestras a mostrar
+fs = 1000             # Frecuencia de muestreo (Hz)
+buffer = deque([0]*N, maxlen=N)  # Buffer deslizante
+ser = serial.Serial('COM6', 9600)  # Ajusta el puerto
 
-# Conectar al puerto serial
-ser = serial.Serial(puerto_serial, baudrate)
-print(f"Conectado a {puerto_serial}")
-
-# Buffer circular para la señal (potencia de 2 para FFT eficiente)
-N = 256
-buffer = collections.deque([0]*N, maxlen=N)
-
-# Configurar figura con dos subgráficas
+# Configuración de la figura
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
 
 # Señal en el tiempo
 linea_senal, = ax1.plot(range(N), [0]*N)
 ax1.set_title("Señal en voltaje (tiempo real)")
-ax1.set_ylim(0, 5.5)  # Ajustado a voltaje (0 a 5V)
-ax1.set_xlim(0, 2000)
+ax1.set_ylim(0, 5.5)
+ax1.set_xlim(0, N)  # <-- Aseguramos el eje X de 0 a 2000 muestras
 ax1.set_ylabel("Voltaje (V)")
 ax1.set_xlabel("Muestras")
 ax1.grid(True)
@@ -33,12 +26,13 @@ ax1.grid(True)
 frecuencias = np.fft.fftfreq(N, 1/fs)
 linea_fft, = ax2.plot(frecuencias[:N//2], [0]*(N//2))
 ax2.set_title("FFT (frecuencia en tiempo real)")
-ax2.set_ylim(0, 200)          # Magnitud de 0 a 10
-ax2.set_xlim(0, 200)         # Frecuencia de 0 a 200 Hz
+ax2.set_ylim(0, 200)
+ax2.set_xlim(0, 200)
 ax2.set_ylabel("Magnitud")
 ax2.set_xlabel("Frecuencia (Hz)")
 ax2.grid(True)
 
+# Función de actualización de la animación
 def actualizar(frame):
     try:
         if ser.in_waiting:
@@ -47,10 +41,10 @@ def actualizar(frame):
             voltaje = (valor / 1023.0) * 5.0  # Conversión ADC -> Voltaje
             buffer.append(voltaje)
 
-            # Actualizar señal en voltaje
+            # Actualizar la gráfica de señal
             linea_senal.set_ydata(buffer)
 
-            # Calcular FFT y actualizar gráfica
+            # FFT y gráfica
             senal_np = np.array(buffer)
             fft = np.abs(np.fft.fft(senal_np - np.mean(senal_np)))
             linea_fft.set_ydata(fft[:N//2])
@@ -59,6 +53,7 @@ def actualizar(frame):
 
     return linea_senal, linea_fft
 
+# Animación en tiempo real
 ani = FuncAnimation(fig, actualizar, interval=10)
 plt.tight_layout()
 plt.show()
