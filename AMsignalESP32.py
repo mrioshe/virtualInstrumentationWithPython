@@ -4,9 +4,9 @@ import serial
 import time
 
 # Parámetros de la señal
-fs = 1000       # Frecuencia de muestreo (Hz)
+fs = 2000       # Frecuencia de muestreo (Hz)
 duracion = 30    # Duración en segundos
-fc = 60        # Frecuencia de la portadora (Hz)
+fc = 120        # Frecuencia de la portadora (Hz)
 fm = 8        # Frecuencia de la envolvente (Hz)
 Am = 0.15        # Amplitud de la envolvente
 Ac = 0.3          # Amplitud de la portadora

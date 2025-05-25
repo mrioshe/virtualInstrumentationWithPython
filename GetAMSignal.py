@@ -1,61 +1,101 @@
+import pyqtgraph as pg
+from PyQt5.QtWidgets import QApplication
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from collections import deque
 import serial
+from collections import deque
+import sys
+import threading
+import time
+from scipy.signal import butter, filtfilt
 
-# Parámetros
-N = 2000              # Número de muestras a mostrar
-fs = 1000             # Frecuencia de muestreo (Hz)
-buffer = deque([0]*N, maxlen=N)  # Buffer deslizante
-ser = serial.Serial('COM6', 9600)  # Ajusta el puerto
+# Configuración
+fs = 16000            # Frecuencia de muestreo (Hz)
+N = 25000             # Número de muestras para la FFT
+buffer = deque([0]*N, maxlen=N)
 
-# Configuración de la figura
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+# Filtro Butterworth pasa bajos
+fc = 100              # Frecuencia de corte del filtro (Hz)
+orden = 4
+b, a = butter(orden, fc / (fs / 2), btype='low')
+
+# Serial
+ser = serial.Serial('COM6', 115200)
+
+# Qt App
+app = QApplication([])
+win = pg.GraphicsLayoutWidget(title="Señal AM en Tiempo Real")
+win.resize(1000, 600)
 
 # Señal en el tiempo
-linea_senal, = ax1.plot(range(N), [0]*N)
-ax1.set_title("Señal en voltaje (tiempo real)")
-ax1.set_ylim(0, 5.5)
-ax1.set_xlim(0, N)  # <-- Aseguramos el eje X de 0 a 2000 muestras
-ax1.set_ylabel("Voltaje (V)")
-ax1.set_xlabel("Muestras")
-ax1.grid(True)
+plot1 = win.addPlot(title="Señal en Voltaje (Tiempo Real)")
+plot1.setYRange(2, 4)
+curve1 = plot1.plot(pen='c')
 
-# FFT en tiempo real
-frecuencias = np.fft.fftfreq(N, 1/fs)
-linea_fft, = ax2.plot(frecuencias[:N//2], [0]*(N//2))
-ax2.set_title("FFT (frecuencia en tiempo real)")
-ax2.set_ylim(0, 200)
-ax2.set_xlim(0, 200)
-ax2.set_ylabel("Magnitud")
-ax2.set_xlabel("Frecuencia (Hz)")
-ax2.grid(True)
+# FFT
+win.nextRow()
+plot2 = win.addPlot(title="FFT en Tiempo Real")
+plot2.setXRange(0, 200)
+plot2.setYRange(-60, 0)  # Mostrar dB desde -60 a 0 (0 dB es el pico)
+curve2 = plot2.plot(pen='m')
+frecuencias = np.fft.fftfreq(N, 1/fs)[:N//2]
 
-# Función de actualización de la animación
-def actualizar(frame):
-    try:
-        if ser.in_waiting:
-            dato = ser.readline().decode().strip()
-            valor = int(dato)
-            voltaje = (valor / 1023.0) * 5.0  # Conversión ADC -> Voltaje
-            buffer.append(voltaje)
+# Suavizado exponencial para FFT
+fft_db_suavizada = np.zeros(N//2)
+alpha = 0.2  # Factor de suavizado (0 = mucho suavizado, 1 = sin suavizado)
 
-            # Actualizar la gráfica de señal
-            linea_senal.set_ydata(buffer)
+# Hilo de lectura serial
+def leer_serial():
+    while True:
+        try:
+            if ser.in_waiting:
+                byte = ser.read(1)
+                valor = int.from_bytes(byte, byteorder='big')
+                voltaje = (valor / 255.0) * 5.0
+                buffer.append(voltaje)
+        except:
+            pass
+        time.sleep(0.0005)
 
-            # FFT y gráfica
-            senal_np = np.array(buffer)
-            fft = np.abs(np.fft.fft(senal_np - np.mean(senal_np)))
-            linea_fft.set_ydata(fft[:N//2])
-    except:
-        pass
+# Iniciar hilo
+hilo_serial = threading.Thread(target=leer_serial, daemon=True)
+hilo_serial.start()
 
-    return linea_senal, linea_fft
+# Actualizar gráficos
+def actualizar():
+    global fft_db_suavizada
 
-# Animación en tiempo real
-ani = FuncAnimation(fig, actualizar, interval=10)
-plt.tight_layout()
-plt.show()
+    datos_np = np.array(buffer)
 
-ser.close()
+    # Filtrar señal
+    if len(datos_np) > orden:
+        datos_filtrados = filtfilt(b, a, datos_np)
+    else:
+        datos_filtrados = datos_np
+
+    # Señal en el tiempo
+    curve1.setData(datos_filtrados)
+
+    # Quitar offset y aplicar ventana
+    ventana = np.hanning(len(datos_filtrados))
+    datos_ventaneados = (datos_filtrados - np.mean(datos_filtrados)) * ventana
+
+    # Calcular FFT
+    fft = np.abs(np.fft.fft(datos_ventaneados))[:N//2]
+    fft /= np.max(fft) + 1e-12  # Normalizar a 0 dB
+    fft_db = 20 * np.log10(fft + 1e-12)
+
+    # Limitar a rango visible y aplicar suavizado
+    fft_db = np.clip(fft_db, -60, 0)
+    fft_db_suavizada = alpha * fft_db + (1 - alpha) * fft_db_suavizada
+
+    # Actualizar curva FFT
+    curve2.setData(frecuencias, fft_db_suavizada)
+
+# Timer de actualización
+timer = pg.QtCore.QTimer()
+timer.timeout.connect(actualizar)
+timer.start(120)
+
+# Mostrar ventana
+win.show()
+sys.exit(app.exec_())
