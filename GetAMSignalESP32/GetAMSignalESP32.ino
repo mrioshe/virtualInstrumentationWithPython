@@ -6,7 +6,7 @@ String inputString = "";
 bool receiving = false;
 
 void setup() {
-  Serial.begin(9600);  // Debe coincidir con el baud rate en Python
+  Serial.begin(115200);  // Debe coincidir con el baud rate en Python
   pinMode(LED, OUTPUT);
 }
 

@@ -1,9 +1,11 @@
-void setup() {
-  Serial.begin(9600);      // Iniciar comunicación serial
-}
+#define LED_BUILTIN 2  // Pin 2 suele estar conectado al LED en el ESP32
 
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);  // Configura el pin como salida
+}
 void loop() {
-  int valor = analogRead(A0);     // Leer el valor analógico en A0 (0–1023)
-  Serial.println(valor);          // Enviar el valor por el puerto serial
-  delay(1);                      // Pequeña pausa para estabilizar la lectura (ajustable)
+  digitalWrite(LED_BUILTIN, HIGH);  // Enciende el LED
+  delay(500);                       // Espera 500 ms
+  digitalWrite(LED_BUILTIN, LOW);   // Apaga el LED
+  delay(500);                       // Espera 500 ms
 }

@@ -25,7 +25,7 @@ senal_am = Ac * (1 + m * np.sin(2 * np.pi * fm * t)) * np.sin(2 * np.pi * fc * t
 senal_am_offset = senal_am + offset
 
 # Envío por puerto serial (ajusta COM7)
-puerto = serial.Serial('COM9', 9600)
+puerto = serial.Serial('COM9', 115200)
 time.sleep(2)
 
 # Enviar los valores de la señal AM con offset

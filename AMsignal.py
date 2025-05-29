@@ -28,7 +28,7 @@ senal_am_offset = senal_am + offset
 senal_am_normalizada = np.interp(senal_am_offset, (min(senal_am_offset), max(senal_am_offset)), (0, 255))
 
 # Envío por puerto serial (ajusta COMX)
-puerto = serial.Serial('COM5', 9600)
+puerto = serial.Serial('COM5', 115200)
 time.sleep(2)
 
 for valor in senal_am_normalizada:
