@@ -1,96 +1,52 @@
-#include <AccelStepper.h>
-
 // Pines motores
-#define DIR_X 4
-#define STEP_X 2
-#define DIR_Y 14
-#define STEP_Y 12
+const int STEP1_PIN = 2;
+const int DIR1_PIN  = 4;
+const int STEP2_PIN = 12;
+const int DIR2_PIN  = 14;
 
-// Láser
-#define LASER_PIN 26
-
-// Crea los motores (driver tipo 1 = driver tipo pulso/dirección)
-AccelStepper motorX(AccelStepper::DRIVER, STEP_X, DIR_X);
-AccelStepper motorY(AccelStepper::DRIVER, STEP_Y, DIR_Y);
-
-// Parámetros de movimiento
-const int letterSpacing = 100;  // Espaciado entre letras
-const int drawSpeed = 800;      // Velocidad de dibujo en pasos/segundo
-
-String texto = "";
+// Parámetros del movimiento
+const int stepsPerMovement = 400;  // Ajusta según tus motores
+const int stepDelay = 1000;        // Microsegundos entre pasos (1000 us = 1 ms = ~1000 pasos/seg)
 
 void setup() {
-  Serial.begin(115200);
-
-  pinMode(LASER_PIN, OUTPUT);
-  digitalWrite(LASER_PIN, LOW);
-
-  motorX.setMaxSpeed(1000);
-  motorX.setAcceleration(500);
-
-  motorY.setMaxSpeed(1000);
-  motorY.setAcceleration(500);
+  pinMode(STEP1_PIN, OUTPUT);
+  pinMode(DIR1_PIN, OUTPUT);
+  pinMode(STEP2_PIN, OUTPUT);
+  pinMode(DIR2_PIN, OUTPUT);
 }
 
 void loop() {
-  if (Serial.available()) {
-    texto = Serial.readStringUntil('\n');
-    texto.trim();
+  // Movimiento 1: Izquierda a derecha (Motor X adelante)
+  digitalWrite(DIR1_PIN, HIGH);
+  moverMotor(STEP1_PIN, stepsPerMovement);
 
-    Serial.println("Recibido: " + texto);
-    dibujarTexto(texto);
-    Serial.println("FIN");
-  }
+  delay(1000); // Pausa entre movimientos
+
+  // Movimiento 2: Derecha a izquierda (Motor X atrás)
+  digitalWrite(DIR1_PIN, LOW);
+  moverMotor(STEP1_PIN, stepsPerMovement);
+
+  delay(1000);
+
+  // Movimiento 3: Arriba a abajo (Motor Y adelante)
+  digitalWrite(DIR2_PIN, HIGH);
+  moverMotor(STEP2_PIN, stepsPerMovement);
+
+  delay(1000);
+
+  // Movimiento 4: Abajo a arriba (Motor Y atrás)
+  digitalWrite(DIR2_PIN, LOW);
+  moverMotor(STEP2_PIN, stepsPerMovement);
+
+  delay(1000);
 }
 
-// Dibuja texto carácter por carácter
-void dibujarTexto(String txt) {
-  for (int i = 0; i < txt.length(); i++) {
-    char letra = txt[i];
-    Serial.println("Dibujando letra: " + String(letra));
-    dibujarLetra(letra);
-    moverRelativo(motorX, letterSpacing);  // Espacio entre letras
-  }
-}
-
-// Dibuja letras simples como líneas
-void dibujarLetra(char letra) {
-  digitalWrite(LASER_PIN, HIGH);
-
-  switch (toupper(letra)) {
-    case 'L':
-      moverRelativo(motorY, 80);
-      moverRelativo(motorY, -80);
-      moverRelativo(motorX, 40);
-      break;
-    case 'U':
-      moverRelativo(motorY, 80);
-      moverRelativo(motorX, 30);
-      moverRelativo(motorY, -80);
-      break;
-    case 'I':
-      moverRelativo(motorY, 80);
-      moverRelativo(motorY, -80);
-      break;
-    case 'S':
-      moverRelativo(motorX, 40);
-      moverRelativo(motorY, 40);
-      moverRelativo(motorX, -40);
-      moverRelativo(motorY, 40);
-      moverRelativo(motorX, 40);
-      break;
-    default:
-      break;
-  }
-
-  digitalWrite(LASER_PIN, LOW);
-}
-
-// Movimiento relativo con aceleración
-void moverRelativo(AccelStepper &motor, int pasos) {
-  long objetivo = motor.currentPosition() + pasos;
-  motor.moveTo(objetivo);
-  while (motor.distanceToGo() != 0) {
-    motor.run();
+// Función para mover un motor
+void moverMotor(int stepPin, int steps) {
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
   }
 }
