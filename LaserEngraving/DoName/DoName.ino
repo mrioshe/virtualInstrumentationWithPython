@@ -1,52 +1,66 @@
-// Pines motores
-const int STEP1_PIN = 2;
-const int DIR1_PIN  = 4;
-const int STEP2_PIN = 12;
-const int DIR2_PIN  = 14;
+#include <AccelStepper.h>
 
-// Parámetros del movimiento
-const int stepsPerMovement = 400;  // Ajusta según tus motores
-const int stepDelay = 1000;        // Microsegundos entre pasos (1000 us = 1 ms = ~1000 pasos/seg)
+// Configuración de pines
+#define STEP1 2
+#define DIR1 4
+#define STEP2 12
+#define DIR2 14
+
+// Crear objetos de motor
+AccelStepper motorY(AccelStepper::DRIVER, STEP1, DIR1);  // Eje Y
+AccelStepper motorX(AccelStepper::DRIVER, STEP2, DIR2);  // Eje X
+
+// Parámetros de movimiento
+const float MAX_SPEED = 1500.0;
+const float ACCELERATION = 800.0;
+const int STEPS_PER_MM = 80;  // Ajustar según tu configuración
+
+// Variables de posición
+long targetX = 0;
+long targetY = 0;
 
 void setup() {
-  pinMode(STEP1_PIN, OUTPUT);
-  pinMode(DIR1_PIN, OUTPUT);
-  pinMode(STEP2_PIN, OUTPUT);
-  pinMode(DIR2_PIN, OUTPUT);
+  Serial.begin(115200);
+  
+  // Configurar motores
+  motorX.setMaxSpeed(MAX_SPEED);
+  motorX.setAcceleration(ACCELERATION);
+  
+  motorY.setMaxSpeed(MAX_SPEED);
+  motorY.setAcceleration(ACCELERATION);
+  
+  // Establecer posiciones iniciales
+  motorX.setCurrentPosition(0);
+  motorY.setCurrentPosition(0);
 }
 
 void loop() {
-  // Movimiento 1: Izquierda a derecha (Motor X adelante)
-  digitalWrite(DIR1_PIN, HIGH);
-  moverMotor(STEP1_PIN, stepsPerMovement);
-
-  delay(1000); // Pausa entre movimientos
-
-  // Movimiento 2: Derecha a izquierda (Motor X atrás)
-  digitalWrite(DIR1_PIN, LOW);
-  moverMotor(STEP1_PIN, stepsPerMovement);
-
-  delay(1000);
-
-  // Movimiento 3: Arriba a abajo (Motor Y adelante)
-  digitalWrite(DIR2_PIN, HIGH);
-  moverMotor(STEP2_PIN, stepsPerMovement);
-
-  delay(1000);
-
-  // Movimiento 4: Abajo a arriba (Motor Y atrás)
-  digitalWrite(DIR2_PIN, LOW);
-  moverMotor(STEP2_PIN, stepsPerMovement);
-
-  delay(1000);
-}
-
-// Función para mover un motor
-void moverMotor(int stepPin, int steps) {
-  for (int i = 0; i < steps; i++) {
-    digitalWrite(stepPin, HIGH);
-    delayMicroseconds(stepDelay);
-    digitalWrite(stepPin, LOW);
-    delayMicroseconds(stepDelay);
+  if (Serial.available()) {
+    String input = Serial.readStringUntil('\n');
+    
+    if (input == "L") {
+      // Levantar "lápiz" (retraer 5mm en Y)
+      motorY.move(-5 * STEPS_PER_MM);
+      while (motorY.distanceToGo() != 0) {
+        motorY.run();
+      }
+    } else {
+      // Parsear coordenadas
+      int commaIndex = input.indexOf(',');
+      if (commaIndex > 0) {
+        targetX = input.substring(0, commaIndex).toInt();
+        targetY = input.substring(commaIndex + 1).toInt();
+        
+        // Mover a nueva posición
+        motorX.moveTo(targetX);
+        motorY.moveTo(targetY);
+        
+        // Ejecutar movimientos
+        while (motorX.distanceToGo() != 0 || motorY.distanceToGo() != 0) {
+          motorX.run();
+          motorY.run();
+        }
+      }
+    }
   }
 }
