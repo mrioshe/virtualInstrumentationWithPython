@@ -3,12 +3,12 @@ import time
 import numpy as np
 
 # Configuración de la conexión serial
-SERIAL_PORT = 'COM7'  # Cambiar por el puerto correcto
+SERIAL_PORT = 'COM9'  # Cambiar por el puerto correcto
 BAUD_RATE = 115200
 
 # Dimensiones del área de dibujo (en pasos)
-MAX_X = 500
-MAX_Y = 500
+MAX_X = 350
+MAX_Y = 350
 
 # Mapeo de caracteres a coordenadas (sistema simplificado)
 def char_to_coordinates(char):

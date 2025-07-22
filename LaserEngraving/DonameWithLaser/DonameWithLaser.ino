@@ -9,7 +9,7 @@
 // PWM manual para láser
 const int laserPin = 27;
 const int frecuencia = 5000;          // 5 kHz
-const float dutyCycle = 0.5;          // 50%
+const float dutyCycle = 0.25;          // 50%
 const unsigned long periodo = 200;     // 200 μs (1/5000Hz)
 
 // Crear objetos de motor
