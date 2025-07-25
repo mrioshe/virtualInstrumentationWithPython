@@ -467,11 +467,17 @@ const char index_html[] PROGMEM = R"rawliteral(
   </div>
   
   <footer>
-    <p>Sistema CNC © 2023 - Universidad Médica</p>
+    <p>Sistema CNC &copy; 2023 - Universidad Médica</p>
   </footer>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Referencias a botones
+      const startBtn = document.getElementById('startBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resumeBtn = document.getElementById('resumeBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      
       // Inicialización de gráficas
       const ctx1 = document.getElementById('sensorChart1').getContext('2d');
       const ctx2 = document.getElementById('sensorChart2').getContext('2d');
@@ -495,12 +501,16 @@ const char index_html[] PROGMEM = R"rawliteral(
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            y: {
+            y: { 
               beginAtZero: true,
-              grid: { color: 'rgba(0,0,0,0.05)' }
+              grid: { 
+                color: 'rgba(0,0,0,0.05)'
+              }
             },
-            x: {
-              grid: { display: false }
+            x: { 
+              grid: { 
+                display: false 
+              }
             }
           }
         }
@@ -524,41 +534,46 @@ const char index_html[] PROGMEM = R"rawliteral(
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            y: {
+            y: { 
               beginAtZero: true,
-              grid: { color: 'rgba(0,0,0,0.05)' }
+              grid: { 
+                color: 'rgba(0,0,0,0.05)'
+              }
             },
-            x: {
-              grid: { display: false }
+            x: { 
+              grid: { 
+                display: false 
+              }
             }
           }
         }
       });
       
-      // Función para actualizar gráficas
       function updateCharts(sensorData) {
         const now = new Date();
-        const timeString = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        const timeString = now.getHours() + ':' + 
+                          String(now.getMinutes()).padStart(2, '0') + ':' + 
+                          String(now.getSeconds()).padStart(2, '0');
         
-        // Actualizar datos
         chart1.data.labels.push(timeString);
         chart1.data.datasets[0].data.push(sensorData.sensor1);
+        
         chart2.data.labels.push(timeString);
         chart2.data.datasets[0].data.push(sensorData.sensor2);
         
-        // Mantener longitud máxima
         if (chart1.data.labels.length > maxDataPoints) {
           chart1.data.labels.shift();
           chart1.data.datasets[0].data.shift();
+        }
+        
+        if (chart2.data.labels.length > maxDataPoints) {
           chart2.data.labels.shift();
           chart2.data.datasets[0].data.shift();
         }
         
-        // Actualizar gráficas
         chart1.update();
         chart2.update();
         
-        // Actualizar valores numéricos
         document.getElementById('sensorValue1').textContent = sensorData.sensor1 + ' ppm';
         document.getElementById('sensorValue2').textContent = sensorData.sensor2 + ' ppm';
       }
@@ -566,21 +581,16 @@ const char index_html[] PROGMEM = R"rawliteral(
       function fetchSensorData() {
         fetch('/sensorData')
           .then(response => response.json())
-          .then(data => {
-            updateCharts(data);
-          })
-          .catch(error => {
-            console.error('Error obteniendo datos de sensores:', error);
-          });
+          .then(data => updateCharts(data))
+          .catch(error => console.error('Error obteniendo datos de sensores:', error));
       }
       
-      // Actualizar datos de sensores cada 2 segundos
       setInterval(fetchSensorData, 2000);
       
       // Funciones de control CNC
       function sendText() {
         const input = document.getElementById('userInput').value;
-        if(input.trim() === '') {
+        if (input.trim() === '') {
           updateStatusMessage('Por favor ingrese un texto', 'error');
           return;
         }
@@ -593,10 +603,9 @@ const char index_html[] PROGMEM = R"rawliteral(
           body: input.toUpperCase()
         })
         .then(response => {
-          if(response.ok) {
-            updateStatusMessage('Texto enviado. Esperando inicio de grabado...', 'processing');
+          if (response.ok) {
+            updateStatusMessage('Texto enviado. Iniciando grabado...', 'processing');
             document.getElementById('userInput').value = '';
-            updateButtonStates(); // Update buttons immediately after sending text
           } else {
             updateStatusMessage('Error al enviar texto', 'error');
           }
@@ -609,9 +618,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       function pauseDrawing() {
         fetch('/pause')
           .then(response => {
-            if(response.ok) {
+            if (response.ok) {
               updateStatusMessage('Grabado en pausa', 'processing');
-              updateButtonStates();
             }
           });
       }
@@ -619,9 +627,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       function resumeDrawing() {
         fetch('/resume')
           .then(response => {
-            if(response.ok) {
+            if (response.ok) {
               updateStatusMessage('Reanudando grabado...', 'processing');
-              updateButtonStates();
             }
           });
       }
@@ -629,14 +636,19 @@ const char index_html[] PROGMEM = R"rawliteral(
       function stopDrawing() {
         fetch('/stop')
           .then(response => {
-            if(response.ok) {
+            if (response.ok) {
               updateStatusMessage('Grabado detenido', 'ready');
-              updateButtonStates();
             }
           });
       }
       
-      let lastCncStatus = ""; // To prevent unnecessary DOM updates
+      // Asignar eventos a los botones
+      startBtn.addEventListener('click', sendText);
+      pauseBtn.addEventListener('click', pauseDrawing);
+      resumeBtn.addEventListener('click', resumeDrawing);
+      stopBtn.addEventListener('click', stopDrawing);
+      
+      let lastCncStatus = "";
       let lastLaserStatus = "";
 
       function updateStatus() {
@@ -644,25 +656,25 @@ const char index_html[] PROGMEM = R"rawliteral(
           .then(response => response.text())
           .then(data => {
             if (data !== lastCncStatus) {
-                document.getElementById('cncStatus').textContent = data;
-                lastCncStatus = data;
+              document.getElementById('cncStatus').textContent = data;
+              lastCncStatus = data;
             }
-            updateButtonStates(); // Update button states based on fetched CNC status
+            updateButtonStates();
           });
           
         fetch('/getLaserStatus')
           .then(response => response.text())
           .then(data => {
             if (data !== lastLaserStatus) {
-                const laserStatus = document.getElementById('laserStatus');
-                if(data === 'ON') {
-                  laserStatus.className = 'status-value laser-on';
-                  laserStatus.textContent = 'ENCENDIDO';
-                } else {
-                  laserStatus.className = 'status-value laser-off';
-                  laserStatus.textContent = 'APAGADO';
-                }
-                lastLaserStatus = data;
+              const laserStatus = document.getElementById('laserStatus');
+              if(data === 'ON') {
+                laserStatus.className = 'status-value laser-on';
+                laserStatus.textContent = 'ENCENDIDO';
+              } else {
+                laserStatus.className = 'status-value laser-off';
+                laserStatus.textContent = 'APAGADO';
+              }
+              lastLaserStatus = data;
             }
           });
       }
@@ -686,33 +698,30 @@ const char index_html[] PROGMEM = R"rawliteral(
 
       function updateButtonStates() {
         fetch('/getCNCStatus')
-            .then(response => response.text())
-            .then(status => {
-                const startBtn = document.getElementById('startBtn');
-                const pauseBtn = document.getElementById('pauseBtn');
-                const resumeBtn = document.getElementById('resumeBtn');
-                const stopBtn = document.getElementById('stopBtn');
+          .then(response => response.text())
+          .then(status => {
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const stopBtn = document.getElementById('stopBtn');
 
-                if (status.includes("Listo") || status.includes("APAGADO") || status.includes("detenido")) { // IDLE or STOPPED
-                    startBtn.disabled = false;
-                    pauseBtn.disabled = true;
-                    resumeBtn.disabled = true;
-                    stopBtn.disabled = true;
-                } else if (status.includes("Dibujando") || status.includes("Procesando")) { // PROCESSING_TEXT or DRAWING_CHARACTER
-                    startBtn.disabled = true;
-                    pauseBtn.disabled = false;
-                    resumeBtn.disabled = true;
-                    stopBtn.disabled = false;
-                } else if (status.includes("PAUSADO")) { // PAUSED
-                    startBtn.disabled = true;
-                    pauseBtn.disabled = true;
-                    resumeBtn.disabled = false;
-                    stopBtn.disabled = false;
-                }
-            })
-            .catch(error => {
-                console.error('Error updating button states:', error);
-            });
+            if (status.includes("Listo") || status.includes("Detenido")) {
+              startBtn.disabled = false;
+              pauseBtn.disabled = true;
+              resumeBtn.disabled = true;
+              stopBtn.disabled = true;
+            } else if (status.includes("Procesando") || status.includes("Dibujando")) {
+              startBtn.disabled = true;
+              pauseBtn.disabled = false;
+              resumeBtn.disabled = true;
+              stopBtn.disabled = false;
+            } else if (status.includes("PAUSADO")) {
+              startBtn.disabled = true;
+              pauseBtn.disabled = true;
+              resumeBtn.disabled = false;
+              stopBtn.disabled = false;
+            }
+          });
       }
       
       // Actualizar estado cada 300ms
@@ -720,12 +729,6 @@ const char index_html[] PROGMEM = R"rawliteral(
       
       // Inicializar botones al cargar la página
       updateButtonStates();
-
-      // Asignar eventos a los botones
-      document.getElementById('startBtn').addEventListener('click', sendText);
-      document.getElementById('pauseBtn').addEventListener('click', pauseDrawing);
-      document.getElementById('resumeBtn').addEventListener('click', resumeDrawing);
-      document.getElementById('stopBtn').addEventListener('click', stopDrawing);
     });
   </script>
 </body>
@@ -887,7 +890,7 @@ std::vector<Point> getCharCoordinates(char c, int xOffset) {
         case '9':
             move(MAX_X, MAX_Y / 2); move(0, MAX_Y); move(MAX_X, MAX_Y); move(MAX_X, 0); move(0, 0);
             break;
-        case ' ': // Espacio
+        case ' ':
             lift();
             move(0, 0); move(MAX_X, 0);
             lift();
@@ -895,7 +898,6 @@ std::vector<Point> getCharCoordinates(char c, int xOffset) {
         default:
             break;
     }
-
     return coords;
 }
 
@@ -923,8 +925,16 @@ void handleLaserPWM() {
     }
 }
 
-// Function to transition between states
+// Función para transición entre estados
 void enterState(CNC_State newState) {
+    Serial.print("Cambiando estado a: ");
+    switch (newState) {
+        case IDLE: Serial.println("IDLE"); break;
+        case PROCESSING_TEXT: Serial.println("PROCESSING_TEXT"); break;
+        case DRAWING_CHARACTER: Serial.println("DRAWING_CHARACTER"); break;
+        case PAUSED: Serial.println("PAUSED"); break;
+        case STOPPED: Serial.println("STOPPED"); break;
+    }
     currentState = newState;
     switch (currentState) {
         case IDLE:
@@ -965,8 +975,9 @@ String getCNCStatusString() {
         case IDLE: return "Listo";
         case PROCESSING_TEXT: return "Procesando...";
         case DRAWING_CHARACTER:
-            if (currentCharIndex != -1) {
-                return "Dibujando: " + String(currentCharIndex + 1) + "/" + String(textToDraw.length());
+            if (currentCharIndex != -1 && currentCharIndex < textToDraw.length()) {
+                return "Dibujando: " + String(textToDraw[currentCharIndex]) + " (" + 
+                       String(currentCharIndex + 1) + "/" + String(textToDraw.length()) + ")";
             }
             return "Dibujando...";
         case PAUSED: return "PAUSADO";
@@ -980,11 +991,9 @@ void setup() {
     pinMode(laserPin, OUTPUT);
     digitalWrite(laserPin, LOW);
     
-    // Configurar pines de sensores
     pinMode(sensorPin1, INPUT);
     pinMode(sensorPin2, INPUT);
 
-    // Conexión WiFi
     WiFi.begin(ssid, password);
     Serial.print("Conectando a WiFi");
     while (WiFi.status() != WL_CONNECTED) {
@@ -993,7 +1002,6 @@ void setup() {
     }
     Serial.println("\nConectado! IP: " + WiFi.localIP().toString());
 
-    // Configuración de rutas web
     server.on("/", HTTP_GET, []() {
         server.send(200, "text/html", index_html);
     });
@@ -1009,6 +1017,7 @@ void setup() {
                 currentPointIndex = 0;
                 repositioningMove = true;
                 enterState(PROCESSING_TEXT);
+                Serial.println("Texto recibido: " + textToDraw);
                 server.send(200, "text/plain", "OK");
             } else {
                 server.send(409, "text/plain", "Error: Sistema ocupado");
@@ -1049,7 +1058,7 @@ void setup() {
             enterState(STOPPED);
             server.send(200, "text/plain", "STOPPED");
         } else {
-             server.send(409, "text/plain", "Error: Ya detenido");
+            server.send(409, "text/plain", "Error: Ya detenido");
         }
     });
     
@@ -1064,7 +1073,6 @@ void setup() {
     
     server.begin();
 
-    // Configuración de motores
     motorX.setMaxSpeed(MAX_SPEED);
     motorX.setAcceleration(ACCELERATION);
     motorY.setMaxSpeed(MAX_SPEED);
@@ -1079,13 +1087,12 @@ void loop() {
     server.handleClient();
     handleLaserPWM();
     
-    // State machine logic
     switch (currentState) {
         case IDLE:
-        case PAUSED:
         case STOPPED:
             break;
-            
+        case PAUSED:
+            break;
         case PROCESSING_TEXT:
         case DRAWING_CHARACTER:
             if (!motorX.isRunning() && !motorY.isRunning()) {
@@ -1100,39 +1107,37 @@ void loop() {
 
 void processDrawing() {
     if (currentCharIndex >= textToDraw.length()) {
+        Serial.println("Dibujo completado");
         enterState(IDLE);
         return;
     }
 
-    // Cargar nuevo carácter si es necesario
     if (currentCharPath.empty() || currentPointIndex >= currentCharPath.size()) {
         char currentChar = textToDraw[currentCharIndex];
+        Serial.println("Cargando caracter: " + String(currentChar));
         
         if (currentChar == ' ') {
             xOffset += MAX_X + SPACE_BETWEEN_CHARS;
             currentCharIndex++;
             repositioningMove = true;
             laserEnabled = false;
-            digitalWrite(laserPin, LOW);
-            motorX.moveTo(xOffset); 
-            return; 
+            motorX.moveTo(xOffset);
+            return;
         }
         
         currentCharPath = getCharCoordinates(currentChar, xOffset);
+        Serial.println("Puntos del caracter: " + String(currentCharPath.size()));
         currentPointIndex = 0;
         xOffset += MAX_X + SPACE_BETWEEN_CHARS;
         repositioningMove = true;
         laserEnabled = false;
-        digitalWrite(laserPin, LOW);
     }
 
-    // Procesar punto actual
     if (currentPointIndex < currentCharPath.size()) {
         Point p = currentCharPath[currentPointIndex];
         
         if (p.x == -1 && p.y == -1) {
             laserEnabled = false;
-            digitalWrite(laserPin, LOW);
             repositioningMove = true;
             currentPointIndex++;
             return;
@@ -1155,7 +1160,6 @@ void processDrawing() {
         currentCharIndex++;
         repositioningMove = true;
         laserEnabled = false;
-        digitalWrite(laserPin, LOW);
         enterState(PROCESSING_TEXT);
     }
 }
