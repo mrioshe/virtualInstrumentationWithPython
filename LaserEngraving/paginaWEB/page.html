@@ -1,0 +1,346 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Sistema CNC</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Tus estilos CSS aquí (copiar desde tu versión anterior) */
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sistema CNC </h1>
+    <p class="subtitle">Control de grabado láser con monitoreo de calidad del aire</p>
+  </header>
+  
+  <div class="container">
+    <div class="card">
+      <h2>Control CNC</h2>
+      
+      <div class="status-cards">
+        <div class="status-card">
+          <div class="status-title">Estado CNC</div>
+          <div class="status-value cnc-status" id="cncStatus">Listo</div>
+        </div>
+        
+        <div class="status-card">
+          <div class="status-title">Estado Laser</div>
+          <div class="status-value laser-off" id="laserStatus">APAGADO</div>
+        </div>
+      </div>
+      
+      <div class="control-panel">
+        <div class="input-group">
+          <input type="text" id="userInput" placeholder="Ingrese texto (MAYÚSCULAS)" maxlength="20">
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn-primary" id="startBtn">Iniciar Grabado</button>
+          <button class="btn-warning" id="pauseBtn" disabled>Pausar</button>
+          <button class="btn-success" id="resumeBtn" disabled>Continuar</button>
+          <button class="btn-danger" id="stopBtn" disabled>Detener</button>
+        </div>
+        
+        <div id="statusMessage" class="status-message status-ready">Sistema listo</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>Monitoreo de Calidad del Aire</h2>
+      
+      <div class="sensor-grid">
+        <div class="sensor-card">
+          <div class="sensor-header">
+            <div class="sensor-title">Sensor MQ135 (Pin 35)</div>
+            <div class="sensor-value" id="sensorValue1">0 ppm</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="sensorChart1"></canvas>
+          </div>
+        </div>
+        
+        <div class="sensor-card">
+          <div class="sensor-header">
+            <div class="sensor-title">Sensor MQ135 (Pin 34)</div>
+            <div class="sensor-value" id="sensorValue2">0 ppm</div>
+          </div>
+          <div class="chart-container">
+            <canvas id="sensorChart2"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <footer>
+    <p>Sistema CNC &copy; 2025 - Universidad Nacional</p>
+  </footer>
+
+  <script>
+    // URL base obtenida dinámicamente
+    const baseURL = window.location.origin;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Referencias a botones
+      const startBtn = document.getElementById('startBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resumeBtn = document.getElementById('resumeBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      
+      // Inicialización de gráficas
+      const ctx1 = document.getElementById('sensorChart1').getContext('2d');
+      const ctx2 = document.getElementById('sensorChart2').getContext('2d');
+      
+      const maxDataPoints = 20;
+      const chart1 = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'CO2 (ppm) - Sensor 1',
+            data: [],
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { 
+              beginAtZero: true,
+              grid: { 
+                color: 'rgba(0,0,0,0.05)'
+              }
+            },
+            x: { 
+              grid: { 
+                display: false 
+              }
+            }
+          }
+        }
+      });
+      
+      const chart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'CO2 (ppm) - Sensor 2',
+            data: [],
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { 
+              beginAtZero: true,
+              grid: { 
+                color: 'rgba(0,0,0,0.05)'
+              }
+            },
+            x: { 
+              grid: { 
+                display: false 
+              }
+            }
+          }
+        }
+      });
+      
+      function updateCharts(sensorData) {
+        const now = new Date();
+        const timeString = now.getHours() + ':' + 
+                          String(now.getMinutes()).padStart(2, '0') + ':' + 
+                          String(now.getSeconds()).padStart(2, '0');
+        
+        chart1.data.labels.push(timeString);
+        chart1.data.datasets[0].data.push(sensorData.sensor1);
+        
+        chart2.data.labels.push(timeString);
+        chart2.data.datasets[0].data.push(sensorData.sensor2);
+        
+        if (chart1.data.labels.length > maxDataPoints) {
+          chart1.data.labels.shift();
+          chart1.data.datasets[0].data.shift();
+        }
+        
+        if (chart2.data.labels.length > maxDataPoints) {
+          chart2.data.labels.shift();
+          chart2.data.datasets[0].data.shift();
+        }
+        
+        chart1.update();
+        chart2.update();
+        
+        document.getElementById('sensorValue1').textContent = sensorData.sensor1 + ' ppm';
+        document.getElementById('sensorValue2').textContent = sensorData.sensor2 + ' ppm';
+      }
+      
+      function fetchSensorData() {
+        fetch(baseURL + '/sensorData')
+          .then(response => response.json())
+          .then(data => updateCharts(data))
+          .catch(error => console.error('Error obteniendo datos de sensores:', error));
+      }
+      
+      setInterval(fetchSensorData, 2000);
+      
+      // Funciones de control CNC
+      function sendText() {
+        const input = document.getElementById('userInput').value;
+        if (input.trim() === '') {
+          updateStatusMessage('Por favor ingrese un texto', 'error');
+          return;
+        }
+        
+        updateStatusMessage('Enviando texto...', 'processing');
+        
+        fetch(baseURL + '/sendText', {
+          method: 'POST',
+          headers: {'Content-Type': 'text/plain'},
+          body: input.toUpperCase()
+        })
+        .then(response => {
+          if (response.ok) {
+            updateStatusMessage('Texto enviado. Iniciando grabado...', 'processing');
+            document.getElementById('userInput').value = '';
+          } else {
+            updateStatusMessage('Error al enviar texto', 'error');
+          }
+        })
+        .catch(error => {
+          updateStatusMessage('Error: ' + error, 'error');
+        });
+      }
+      
+      function pauseDrawing() {
+        fetch(baseURL + '/pause')
+          .then(response => {
+            if (response.ok) {
+              updateStatusMessage('Grabado en pausa', 'processing');
+            }
+          });
+      }
+      
+      function resumeDrawing() {
+        fetch(baseURL + '/resume')
+          .then(response => {
+            if (response.ok) {
+              updateStatusMessage('Reanudando grabado...', 'processing');
+            }
+          });
+      }
+      
+      function stopDrawing() {
+        fetch(baseURL + '/stop')
+          .then(response => {
+            if (response.ok) {
+              updateStatusMessage('Grabado detenido', 'ready');
+            }
+          });
+      }
+      
+      // Asignar eventos a los botones
+      startBtn.addEventListener('click', sendText);
+      pauseBtn.addEventListener('click', pauseDrawing);
+      resumeBtn.addEventListener('click', resumeDrawing);
+      stopBtn.addEventListener('click', stopDrawing);
+      
+      let lastCncStatus = "";
+      let lastLaserStatus = "";
+
+      function updateStatus() {
+        fetch(baseURL + '/getCNCStatus')
+          .then(response => response.text())
+          .then(data => {
+            if (data !== lastCncStatus) {
+              document.getElementById('cncStatus').textContent = data;
+              lastCncStatus = data;
+            }
+            updateButtonStates();
+          });
+          
+        fetch(baseURL + '/getLaserStatus')
+          .then(response => response.text())
+          .then(data => {
+            if (data !== lastLaserStatus) {
+              const laserStatus = document.getElementById('laserStatus');
+              if(data === 'ON') {
+                laserStatus.className = 'status-value laser-on';
+                laserStatus.textContent = 'ENCENDIDO';
+              } else {
+                laserStatus.className = 'status-value laser-off';
+                laserStatus.textContent = 'APAGADO';
+              }
+              lastLaserStatus = data;
+            }
+          });
+      }
+      
+      function updateStatusMessage(message, type) {
+        const statusEl = document.getElementById('statusMessage');
+        statusEl.textContent = message;
+        
+        // Reset classes
+        statusEl.className = 'status-message';
+        
+        // Add type-specific class
+        if (type === 'processing') {
+          statusEl.classList.add('status-processing');
+        } else if (type === 'ready') {
+          statusEl.classList.add('status-ready');
+        } else if (type === 'error') {
+          statusEl.classList.add('status-error');
+        }
+      }
+
+      function updateButtonStates() {
+        fetch(baseURL + '/getCNCStatus')
+          .then(response => response.text())
+          .then(status => {
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (status.includes("Listo") || status.includes("Detenido")) {
+              startBtn.disabled = false;
+              pauseBtn.disabled = true;
+              resumeBtn.disabled = true;
+              stopBtn.disabled = true;
+            } else if (status.includes("Procesando") || status.includes("Dibujando")) {
+              startBtn.disabled = true;
+              pauseBtn.disabled = false;
+              resumeBtn.disabled = true;
+              stopBtn.disabled = false;
+            } else if (status.includes("PAUSADO")) {
+              startBtn.disabled = true;
+              pauseBtn.disabled = true;
+              resumeBtn.disabled = false;
+              stopBtn.disabled = false;
+            }
+          });
+      }
+      
+      // Actualizar estado cada 300ms
+      setInterval(updateStatus, 300);
+      
+      // Inicializar botones al cargar la página
+      updateButtonStates();
+    });
+  </script>
+</body>
+</html>

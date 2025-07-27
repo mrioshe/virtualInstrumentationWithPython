@@ -4,8 +4,8 @@
 #include <vector>
 
 // --- Configuración WiFi ---
-const char* ssid = "SILVER_MAX";
-const char* password = "123mauricio";
+const char* ssid = "Comunidad_UNMED";
+const char* password = "wifi_med_213";
 WebServer server(80);
 
 // --- Configuración CNC ---
@@ -19,18 +19,24 @@ const int laserPin = 27;
 const int sensorPin1 = 35;  // Sensor 1
 const int sensorPin2 = 34;  // Sensor 2
 
+// constantes para sensores
+
+const long sensorInterval = 2000;  // Actualizar sensores cada 2 segundos
+unsigned long lastSensorCheck = 0;
+const int SAFE_PPM_LIMIT = 360;  // Límite de seguridad en ppm
+
 // Parámetros PWM manual
-const int frecuencia = 5000;    // 5 kHz
-const float dutyCycle = 0.5;    // 50%
+const int frecuencia = 10000;    // 5 kHz
+const float dutyCycle = 0.9;    // 50%
 const unsigned long periodo = 200;  // 200 μs (1/5000Hz = 200μs)
 
 // --- Parámetros calibración ---
 const int STEPS_PER_MM = 80;            // Ajustar según hardware
-const float MAX_SPEED = 500.0;          // Velocidad máxima (pasos/seg)
-const float ACCELERATION = 200.0;       // Aceleración (pasos/seg²)
-const long CHAR_WIDTH_MM = 2;         // Ancho de cada carácter (mm)
-const long CHAR_HEIGHT_MM = 3;        // Altura de cada carácter (mm)
-const long SPACE_BETWEEN_CHARS_MM = 2;  // Espacio entre caracteres (mm)
+const float MAX_SPEED = 1000.0;          // Velocidad máxima (pasos/seg)
+const float ACCELERATION = 400.0;       // Aceleración (pasos/seg²)
+const long CHAR_WIDTH_MM = 1;         // Ancho de cada carácter (mm)
+const long CHAR_HEIGHT_MM = 1.5;        // Altura de cada carácter (mm)
+const long SPACE_BETWEEN_CHARS_MM = 1;  // Espacio entre caracteres (mm)
 
 // --- Cálculos en pasos ---
 const long MAX_X = CHAR_WIDTH_MM * STEPS_PER_MM;
@@ -60,8 +66,6 @@ unsigned long prevMicros = 0;
 bool laserState = LOW;
 bool laserEnabled = false;
 
-// Variables para sensores
-const long sensorInterval = 2000;  // Actualizar sensores cada 2 segundos
 
 // --- Estados de la máquina de estados ---
 enum CNC_State {
@@ -987,6 +991,34 @@ String getCNCStatusString() {
     }
 }
 
+
+// Detener el sistema (llamado cuando se supera el límite de ppm)
+void stopSystem() {
+    if (currentState != IDLE && currentState != PAUSED) {
+        Serial.println("¡Calidad de aire crítica! Pausando sistema...");
+        enterState(PAUSED);
+    }
+}
+
+void checkAirQuality() {
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastSensorCheck >= sensorInterval) {
+        lastSensorCheck = currentMillis;
+        
+        int sensorValue = analogRead(sensorPin1);
+        int ppm = map(sensorValue, 0, 4095, 0, 1000);
+        
+        Serial.print("Sensor1: ");
+        Serial.print(ppm);
+        Serial.println(" ppm");
+        
+        if (ppm >= SAFE_PPM_LIMIT) {
+            stopSystem();
+        }
+    }
+}
+
+
 void setup() {
     Serial.begin(115200);
     pinMode(laserPin, OUTPUT);
@@ -1087,6 +1119,7 @@ void setup() {
 void loop() {
     server.handleClient();
     handleLaserPWM();
+    checkAirQuality();
     
     switch (currentState) {
         case IDLE:

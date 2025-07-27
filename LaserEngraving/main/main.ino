@@ -4,8 +4,8 @@
 #include <vector>
 
 // --- Configuración WiFi ---
-const char* ssid = "SILVER_MAX";
-const char* password = "123mauricio";
+const char* ssid = "Comunidad_UNMED";
+const char* password = "wifi_med_213";
 WebServer server(80);
 
 // --- Configuración CNC ---
