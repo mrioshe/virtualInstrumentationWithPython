@@ -18,11 +18,13 @@ const int laserPin = 27;
 // Pines sensores MQ135
 const int sensorPin1 = 35;  // Sensor 1
 const int sensorPin2 = 34;  // Sensor 2
+const int FanPin = 18;
 
 // constantes para sensores
 const long sensorInterval = 2000;
 unsigned long lastSensorCheck = 0;
-const int SAFE_PPM_LIMIT = 400;
+const int SAFE_PPM_LIMIT = 450;
+const int SAFE_PPM_LIMIT_2 = 350;
 
 // Parámetros PWM manual
 const int frecuencia = 10000;
@@ -1002,7 +1004,7 @@ void checkAirQuality() {
         lastSensorCheck = currentMillis;
         
         int sensorValue = analogRead(sensorPin1);
-        int ppm = map(sensorValue, 0, 4095, 0, 1000);
+        int ppm = map(sensorValue, 0, 4095, 150, 1500);
         
         Serial.print("Sensor1: ");
         Serial.print(ppm);
@@ -1014,10 +1016,23 @@ void checkAirQuality() {
     }
 }
 
+void ActivateFAN(){
+
+  int sensorValue2 = analogRead(sensorPin2);
+  int ppm2 = map(sensorValue2, 0, 4095, 150, 1500);
+  if (ppm2>500) {
+            digitalWrite(FanPin,HIGH);
+        } else {
+            digitalWrite(FanPin,LOW);
+        }
+}
+
 void setup() {
     Serial.begin(115200);
     pinMode(laserPin, OUTPUT);
+    pinMode(FanPin, OUTPUT);
     digitalWrite(laserPin, LOW);
+    digitalWrite(FanPin, HIGH);
     
     pinMode(sensorPin1, INPUT);
     pinMode(sensorPin2, INPUT);
@@ -1093,8 +1108,8 @@ void setup() {
     server.on("/sensorData", HTTP_GET, []() {
         int sensorValue1 = analogRead(sensorPin1);
         int sensorValue2 = analogRead(sensorPin2);
-        int ppm1 = map(sensorValue1, 0, 4095, 0, 1000);
-        int ppm2 = map(sensorValue2, 0, 4095, 0, 1000);
+        int ppm1 = map(sensorValue1, 0, 4095, 150, 1500);
+        int ppm2 = map(sensorValue2, 0, 4095, 150, 1500);
         String response = "{\"sensor1\":" + String(ppm1) + ",\"sensor2\":" + String(ppm2) + "}";
         server.send(200, "application/json", response);
     });
@@ -1115,6 +1130,7 @@ void loop() {
     server.handleClient();
     handleLaserPWM();
     checkAirQuality();
+    ActivateFAN();
     
     switch (currentState) {
         case IDLE:
