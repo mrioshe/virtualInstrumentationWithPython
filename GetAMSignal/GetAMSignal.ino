@@ -1,32 +1,70 @@
-// ============================================
-// LECTOR DE SEÑAL AM - ARDUINO
-// ============================================
-// Lee señal analógica y envía valores por serial
+const int pwmPin = 9; 
+const int enablePin = 8;
 
-const int pinEntrada = A0;  // Pin donde llega la señal analógica
-const unsigned long intervalo_us = 200; // 200 us = 5 kHz (suficiente para 1kHz portadora)
+int pwmIntensity = 120;
+
+// CÁLCULO PARA 50 KHZ USANDO PRESCALER 8:
+// El Prescaler 8 reduce el reloj del Timer de 16MHz a 2MHz.
+// Frecuencia = (Reloj del Timer) / (TOP + 1)
+// TOP = (Reloj del Timer / Frecuencia) - 1
+// TOP = (2,000,000 / 50,000) - 1 = 39
+const unsigned int PWM_TOP = 39;
 
 void setup() {
-  Serial.begin(115200);
-  while (!Serial) {
-    ; // Esperar a que se abra el puerto serial
-  }
-  analogReference(DEFAULT); // 5V de referencia
-  pinMode(pinEntrada, INPUT);
+  pinMode(pwmPin, OUTPUT);
+  pinMode(enablePin, OUTPUT);
+  
+  digitalWrite(enablePin, HIGH);
+
+  // --- CONFIGURACIÓN DE REGISTROS PARA 50 KHZ ---
+  noInterrupts();
+  
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1  = 0;
+
+  // Modo 14 (Fast PWM con ICR1 como TOP)
+  TCCR1A |= (1 << COM1A1) | (1 << WGM11);
+  TCCR1B |= (1 << WGM13) | (1 << WGM12);
+
+  // **** CAMBIO CLAVE: Prescaler = 8 ****
+  // CS11 = 1 para seleccionar el Prescaler 8
+  TCCR1B |= (1 << CS11); 
+
+  // Establecer el techo (TOP) para 50 kHz
+  ICR1 = PWM_TOP;
+
+  setPwmDuty(pwmIntensity);
+
+  interrupts();
+  // ---------------------------------------------
+
+  Serial.begin(9600);
+  Serial.println("PWM 50 KHZ CONTINUO ACTIVADO (EN PIN 9)");
+  Serial.println("USANDO PRESCALER 8");
+  Serial.print("Intensidad inicial: ");
+  Serial.println(pwmIntensity);
 }
 
 void loop() {
-  static unsigned long ultimoTiempo = 0;
-  unsigned long tiempoActual = micros();
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
 
-  // Muestreo a intervalo fijo
-  if (tiempoActual - ultimoTiempo >= intervalo_us) {
-    ultimoTiempo = tiempoActual;
-    
-    // Leer valor analógico (0-1023)
-    int valor = analogRead(pinEntrada);
-    
-    // Enviar inmediatamente
-    Serial.println(valor);
+    if (input.startsWith("INT ")) {
+      int newInt = input.substring(4).toInt();
+      if (newInt >= 0 && newInt <= 255) {
+        pwmIntensity = newInt;
+        setPwmDuty(pwmIntensity);
+        Serial.print("Nueva intensidad PWM: ");
+        Serial.println(pwmIntensity);
+      }
+    }
   }
+}
+
+void setPwmDuty(int value) {
+  // Mapeamos 0-255 al nuevo rango de 0-39
+  // Nota: La resolución es menor (solo 40 pasos), pero necesaria para 50kHz.
+  OCR1A = map(value, 0, 255, 0, PWM_TOP);
 }
